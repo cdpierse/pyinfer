@@ -1,1 +1,1 @@
-from .inference_report import InferenceReport
+from .inference_report import InferenceReport, MultiInferenceReport

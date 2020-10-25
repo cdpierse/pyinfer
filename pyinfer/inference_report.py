@@ -29,10 +29,12 @@ class InferenceReport:
         n_seconds: Union[int, float, None] = None,
         n_iterations: int = None,
         exit_on_inputs_exhausted: bool = False,
+        inference_timeout_seconds: Union[int, float, None] = None,
     ):
         self.model = model
         self.inputs = inputs
         self.exit_on_inputs_exhausted = exit_on_inputs_exhausted
+        self.inference_timeout_seconds = inference_timeout_seconds
 
         if not n_iterations and not n_seconds:
             raise MeasurementIntervalNotSetError(
@@ -57,9 +59,14 @@ class InferenceReport:
         if self.n_seconds:
             stop = self.n_seconds
             while total_time_taken < stop:
-                run, completed = self._run_model_thread(
-                    self.n_seconds - total_time_taken
-                )
+                if self.inference_timeout_seconds:
+                    run, completed = self._run_model_thread(
+                        self.inference_timeout_seconds
+                    )
+                else:
+                    run, completed = self._run_model_thread(
+                        self.n_seconds - total_time_taken
+                    )
                 runs.append(run)
                 iterations += completed
                 total_time_taken += run.total_seconds()
@@ -83,6 +90,7 @@ class InferenceReport:
     def report(self):
         table = [
             [
+                "Model 1",
                 self.iterations,
                 self.total_time_taken,
                 self._max_run(self.runs),
@@ -94,11 +102,11 @@ class InferenceReport:
             tabulate(
                 table,
                 headers=[
-                    "Infer Completed",
+                    "Completed",
                     "Time Taken (Seconds)",
-                    "Max Run (Millseconds)",
-                    "Min Run (Milliseconds)",
-                    "Std Dev",
+                    "Max Run (ms)",
+                    "Min Run (ms)",
+                    "StDev",
                 ],
             )
         )
@@ -114,7 +122,7 @@ class InferenceReport:
         # This try/except loop ensures that
         #   you'll catch TimeoutException when it's sent.
         try:
-            self.model(self.inputs)  # Whatever your function that might hang
+            self.model(self.inputs)  # our potentially long function
             end = datetime.datetime.now()
             return end - start, 1
         except TimeoutException:
@@ -129,9 +137,9 @@ class InferenceReport:
         return min(runs) * 1000
 
     def _stdev(self, runs: list) -> float:
-        return 1
-        # return statistics.stdev(runs)
+        return statistics.stdev(runs)
 
 
-class MultiModelInferenceReport:
-    pass
+class MultiInferenceReport:
+    def __init__(self, models: List[Callable], inputs: List[Any]):
+        pass
