@@ -8,7 +8,7 @@ from typing import Any, Callable, List, Union
 
 from tabulate import tabulate
 
-from .errors import MeasurementIntervalNotSetError
+from .errors import MeasurementIntervalNotSetError, ModelIsNotCallableError
 
 
 class TimeoutException(Exception):  # Custom exception class
@@ -31,6 +31,10 @@ class InferenceReport:
         exit_on_inputs_exhausted: bool = False,
         inference_timeout_seconds: Union[int, float, None] = None,
     ):
+        if not isinstance(model, Callable):
+            raise ModelIsNotCallableError(
+                "The model provided is not callable. Please provide a model that has a method call."
+            )
         self.model = model
         self.inputs = inputs
         self.exit_on_inputs_exhausted = exit_on_inputs_exhausted
@@ -43,7 +47,7 @@ class InferenceReport:
 
         if n_iterations and n_seconds:
             s = f"You have set both `n_seconds={n_seconds}` and `n_iterations={n_iterations}` "
-            s += f"only one can be specified per instance. Defaulting to measurement interval to `seconds={n_seconds}``"
+            s += f"only one can be specified per instance. Defaulting measurement interval to `seconds={n_seconds}``"
 
             warnings.warn(s)
             self.n_seconds = n_seconds
