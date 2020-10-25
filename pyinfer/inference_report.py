@@ -67,12 +67,33 @@ class InferenceReport:
         self.runs = runs
         self.total_time_taken = total_time_taken
 
-        print(total_time_taken)
         if print_report:
             self.report()
 
     def report(self):
-        table = [[]]
-        print(tabulate(table, headers=results.keys()))
-        headers = ""
-        pass
+        print(self.total_time_taken)
+        table = [
+            [
+                self.iterations,
+                self.total_time_taken,
+                self._max_run(self.runs),
+                self._min_run(self.runs),
+            ]
+        ]
+        print(
+            tabulate(
+                table,
+                headers=[
+                    "Iterations",
+                    "Total Time Taken (Seconds)",
+                    "Max Run (Millseconds)",
+                    "Min Run (Milliseconds)",
+                ],
+            )
+        )
+
+    def _max_run(self, runs: list) -> float:
+        return max(runs).total_seconds() * 1000
+
+    def _min_run(self, runs: list) -> float:
+        return min(runs).total_seconds() * 1000
