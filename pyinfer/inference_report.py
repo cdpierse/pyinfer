@@ -37,14 +37,15 @@ class InferenceReport:
         self.inference_timeout_seconds = inference_timeout_seconds
 
         if not n_iterations and not n_seconds:
-            raise MeasurementIntervalNotSetError(
-                "You have not specified either `n_seconds` or `n_iterations`. Please specify a valid measurement interval."
-            )
+            s = "You have not specified either `n_seconds` or `n_iterations`."
+            s += " Please specify a valid measurement interval."
+            raise MeasurementIntervalNotSetError(s)
 
         if n_iterations and n_seconds:
-            warnings.warn(
-                "You have set both `n_seconds` and `n_iterations` only one can be specified per instance. Defaulting to seconds"
-            )
+            s = f"You have set both `n_seconds={n_seconds}` and `n_iterations={n_iterations}` "
+            s += f"only one can be specified per instance. Defaulting to measurement interval to `seconds={n_seconds}``"
+
+            warnings.warn(s)
             self.n_seconds = n_seconds
             self.n_iterations = None
         else:
