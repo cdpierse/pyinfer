@@ -14,13 +14,14 @@ class InferenceReport:
     def __init__(
         self,
         model: Callable,
-        inputs: Union[List, Any],
+        inputs: Any,
         loop: bool = True,
         n_seconds: Union[int, float, None] = None,
         n_iterations: int = None,
     ):
         self.model = model
         self.input = inputs
+        self.loop = loop
 
         if not n_iterations and not n_seconds:
             raise MeasurementIntervalNotSetError(
@@ -37,34 +38,40 @@ class InferenceReport:
             self.n_seconds = n_seconds
             self.n_iterations = n_iterations
 
-        if self.n_iterations and self.n_seconds:
-            warnings.warn("You have specified both n_seconds and n_iterations. ")
-
     def run(self, print_report: bool = True) -> dict:
-        inference_iter = 0
+        iterations = 0
         runs: List[datetime.timedelta] = []
+        total_time_taken = 0
 
         if self.n_seconds:
-            stop = datetime.datetime.now() + datetime.timedelta(seconds=self.n_seconds)
-            while datetime.datetime.now() < stop:
+            stop = self.n_seconds
+            while total_time_taken < stop:
                 start = datetime.datetime.now()
                 self.model(self.input)
                 end = datetime.datetime.now()
-                runs.append(end - start)
-                inference_iter += 1
+                run = end - start
+                runs.append(run)
+                iterations += 1
+                total_time_taken += run.total_seconds()
         else:
-            while inference_iter <= self.n_iterations:
+            while iterations < self.n_iterations:
                 start = datetime.datetime.now()
                 self.model(self.input)
                 end = datetime.datetime.now()
-                runs.append(end - start)
-                inference_iter += 1
+                run = end - start
+                runs.append(run)
+                iterations += 1
+                total_time_taken += run.total_seconds()
 
-        results = {"iterations": inference_iter, "runs": runs}
+        self.iterations = iterations
+        self.runs = runs
+        self.total_time_taken = total_time_taken
+
+        print(total_time_taken)
         if print_report:
-            self.report(results)
+            self.report()
 
-    def report(self, results: dict):
+    def report(self):
         table = [[]]
         print(tabulate(table, headers=results.keys()))
         headers = ""
