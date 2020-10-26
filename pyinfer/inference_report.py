@@ -20,7 +20,7 @@ class InferenceReport:
         n_seconds: Union[int, float, None] = None,
         n_iterations: int = None,
         exit_on_inputs_exhausted: bool = False,
-        inference_timeout_seconds: Union[int, float, None] = None,
+        infer_timeout: Union[int, float, None] = None,
     ):
         if not isinstance(model, Callable):
             raise ModelIsNotCallableError(
@@ -29,7 +29,7 @@ class InferenceReport:
         self.model = model
         self.inputs = inputs
         self.exit_on_inputs_exhausted = exit_on_inputs_exhausted
-        self.inference_timeout_seconds = inference_timeout_seconds
+        self.infer_timeout = infer_timeout
 
         if not n_iterations and not n_seconds:
             s = "You have not specified either `n_seconds` or `n_iterations`."
@@ -64,6 +64,7 @@ class InferenceReport:
         runs: List[datetime.timedelta] = []
         total_time_taken = 0
         failed = 0
+        completed = 0
 
         if self.n_seconds:
             with self.timeout(self.n_seconds):
@@ -71,11 +72,16 @@ class InferenceReport:
                     start = perf_counter()
                     self.model(self.inputs)
                     end = perf_counter()
-                    # add context manager for situations where a fail can occur
-                    completed = 1
                     run = end - start
+                    if self.infer_timeout:
+                        if run >= self.infer_timeout:
+                            failed += 1
+                        else:
+                            completed += 1
+                    else:
+                        completed += 1
                     runs.append(run)
-                    iterations += completed
+
                     total_time_taken += run
         else:
             while iterations < self.n_iterations:
@@ -87,9 +93,8 @@ class InferenceReport:
                 iterations += 1
                 total_time_taken += run
 
-        self.iterations = iterations
+        self.iterations = completed + failed
         self.runs = runs
-        print(runs[30:50])
         self.total_time_taken = total_time_taken
         self.failed = failed
 
@@ -103,7 +108,7 @@ class InferenceReport:
                 self.iterations,
                 self.failed,
                 self.total_time_taken,
-                round(self.iterations / self.total_time_taken),
+                round(self.iterations / self.total_time_taken,2),
                 self._max_run(self.runs),
                 self._min_run(self.runs),
                 self._stdev(self.runs),
