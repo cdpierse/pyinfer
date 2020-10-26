@@ -60,6 +60,7 @@ class InferenceReport:
         iterations = 0
         runs: List[datetime.timedelta] = []
         total_time_taken = 0
+        failed = 0
 
         if self.n_seconds:
             stop = self.n_seconds
@@ -72,6 +73,8 @@ class InferenceReport:
                     run, completed = self._run_model_thread(
                         self.n_seconds - total_time_taken
                     )
+                if completed == 0:
+                    failed += 1
                 runs.append(run)
                 iterations += completed
                 total_time_taken += run.total_seconds()
@@ -88,6 +91,7 @@ class InferenceReport:
         self.iterations = iterations
         self.runs = [run.total_seconds() for run in runs]
         self.total_time_taken = total_time_taken
+        self.failed = failed
 
         if print_report:
             self.report()
@@ -97,10 +101,13 @@ class InferenceReport:
             [
                 "Model 1",
                 self.iterations,
+                self.failed,
                 self.total_time_taken,
                 self._max_run(self.runs),
                 self._min_run(self.runs),
                 self._stdev(self.runs),
+                self._mean_run(self.runs),
+                self._median_run(self.runs),
             ]
         ]
         print(
@@ -108,13 +115,21 @@ class InferenceReport:
                 table,
                 headers=[
                     "Completed",
-                    "Time Taken (Seconds)",
+                    "Failed",
+                    "Time Taken (sec)",
                     "Max Run (ms)",
                     "Min Run (ms)",
-                    "StDev",
+                    "Stdev (ms)",
+                    "Mean (ms)",
+                    "Median (ms)",
                 ],
+                tablefmt="fancy_grid",
             )
         )
+
+    def plot(self):
+        # will plot the runs on a graph
+        pass
 
     def _run_model_thread(self, timeout):
 
@@ -143,6 +158,12 @@ class InferenceReport:
 
     def _stdev(self, runs: list) -> float:
         return statistics.stdev(runs)
+
+    def _mean_run(self, runs: list) -> float:
+        return statistics.mean(runs)
+
+    def _median_run(self, runs: list) -> float:
+        return statistics.median(runs)
 
 
 class MultiInferenceReport:
