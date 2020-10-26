@@ -1,25 +1,13 @@
-import datetime
-import multiprocessing
 import signal
 import statistics
 import warnings
 from contextlib import contextmanager
-from time import time
+from time import perf_counter, time
 from typing import Any, Callable, List, Union
 
 from tabulate import tabulate
 
 from .errors import MeasurementIntervalNotSetError, ModelIsNotCallableError
-
-
-class TimeoutException(Exception):  # Custom exception class
-    pass
-
-
-def _timeout_handler(signum, frame):  # Custom signal handler
-    print("FAILED")
-    # https://stackoverflow.com/questions/12371361/using-variables-in-signal-handler-require-global see post about using class attributes to do this more elegantly
-    raise TimeoutException()
 
 
 class InferenceReport:
@@ -65,7 +53,6 @@ class InferenceReport:
     def timeout(self, duration):
         def timeout_handler(signum, frame):
             self.terminated = True
-            # raise Exception(f"block timedout after {duration} seconds")
 
         signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(duration)
@@ -80,33 +67,29 @@ class InferenceReport:
 
         if self.n_seconds:
             with self.timeout(self.n_seconds):
-
-               
-
-                stop = self.n_seconds
                 while not self.terminated:
-
-                    # Start the timer. Once {timeout} seconds are over, a SIGALRM signal is sent.
-                    # start = datetime.datetime.now()
-                    run, completed = self._run_model_thread()
-                    # end = datetime.datetime.now()
-                    if completed == 0:
-                        failed += 1
+                    start = perf_counter()
+                    self.model(self.inputs)
+                    end = perf_counter()
+                    # add context manager for situations where a fail can occur
+                    completed = 1
+                    run = end - start
                     runs.append(run)
                     iterations += completed
-                    total_time_taken += run.total_seconds()
+                    total_time_taken += run
         else:
             while iterations < self.n_iterations:
-                start = datetime.datetime.now()
+                start = perf_counter()
                 self.model(self.inputs)
-                end = datetime.datetime.now()
+                end = perf_counter()
                 run = end - start
                 runs.append(run)
                 iterations += 1
-                total_time_taken += run.total_seconds()
+                total_time_taken += run
 
         self.iterations = iterations
-        self.runs = [run.total_seconds() for run in runs]
+        self.runs = runs
+        print(runs[30:50])
         self.total_time_taken = total_time_taken
         self.failed = failed
 
@@ -149,19 +132,6 @@ class InferenceReport:
     def plot(self):
         # will plot the runs on a graph
         pass
-
-    def _run_model_thread(self):
-
-        start = datetime.datetime.now()
-        
-        try:
-            self.model(self.inputs)  # our potentially long function
-            end = datetime.datetime.now()
-
-            return end - start, 1
-        except TimeoutException:
-            end = datetime.datetime.now()
-            return end - start, 0
 
     def _max_run(self, runs: list) -> float:
         return max(runs) * 1000
