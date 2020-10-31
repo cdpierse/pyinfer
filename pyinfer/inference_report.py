@@ -1,10 +1,12 @@
+import multiprocessing as mp
 import signal
 import statistics
 import warnings
 from contextlib import contextmanager
-from time import perf_counter, time
+from time import perf_counter, perf_counter_ns, sleep, time
 from typing import Any, Callable, List, Union
 
+import psutil
 from tabulate import tabulate
 
 from .errors import MeasurementIntervalNotSetError, ModelIsNotCallableError
@@ -20,7 +22,7 @@ class InferenceReport:
         n_seconds: Union[int, float, None] = None,
         n_iterations: int = None,
         exit_on_inputs_exhausted: bool = False,
-        infer_timeout: Union[int, float, None] = None,
+        infer_failure_point: Union[int, float, None] = None,
     ):
         if not isinstance(model, Callable):
             raise ModelIsNotCallableError(
@@ -29,7 +31,7 @@ class InferenceReport:
         self.model = model
         self.inputs = inputs
         self.exit_on_inputs_exhausted = exit_on_inputs_exhausted
-        self.infer_timeout = infer_timeout
+        self.infer_failure_point = infer_failure_point
 
         if not n_iterations and not n_seconds:
             s = "You have not specified either `n_seconds` or `n_iterations`."
@@ -69,12 +71,12 @@ class InferenceReport:
         if self.n_seconds:
             with self.timeout(self.n_seconds):
                 while not self.terminated:
-                    start = perf_counter()
+                    start = perf_counter_ns() * 1e-9
                     self.model(self.inputs)
-                    end = perf_counter()
+                    end = perf_counter_ns() * 1e-9
                     run = end - start
-                    if self.infer_timeout:
-                        if run >= self.infer_timeout:
+                    if self.infer_failure_point:
+                        if run >= self.infer_failure_point:
                             failed += 1
                         else:
                             completed += 1
@@ -85,52 +87,66 @@ class InferenceReport:
                     total_time_taken += run
         else:
             while iterations < self.n_iterations:
-                start = perf_counter()
+                start = perf_counter_ns() * 1e-9
                 self.model(self.inputs)
                 end = perf_counter()
-                run = end - start
-                runs.append(run)
+                end = perf_counter_ns() * 1e-9
+                runs.append(round(run, 4))
                 iterations += 1
                 total_time_taken += run
 
-        self.iterations = completed + failed
-        self.runs = runs
-        self.total_time_taken = total_time_taken
-        self.failed = failed
+        results_dict = self._make_results_dict(
+            completed, failed, runs, total_time_taken
+        )
 
         if print_report:
-            self.report()
+            self.report(results_dict)
+        return results_dict
 
-    def report(self):
-        table = [
-            [
-                "Model 1",
-                self.iterations,
-                self.failed,
-                self.total_time_taken,
-                round(self.iterations / self.total_time_taken,2),
-                self._max_run(self.runs),
-                self._min_run(self.runs),
-                self._stdev(self.runs),
-                self._mean_run(self.runs),
-                self._median_run(self.runs),
-            ]
-        ]
+    def _make_results_dict(
+        self,
+        completed: int,
+        failed: int,
+        runs: List[float],
+        total_time_taken: float,
+    ) -> dict:
+        total = completed + failed
+        return {
+            "Model": "Model 1",
+            "Success": completed,
+            "Fail": failed,
+            "Took": total_time_taken,
+            "Infer(p/sec)": round(total / total_time_taken, 2),
+            "MaxRun(ms)": self._max_run(runs),
+            "MinRun(ms)": self._min_run(runs),
+            "Std(ms)": self._stdev(runs),
+            "Mean(ms)": self._mean_run(runs),
+            "Median(ms)": self._median_run(runs),
+            "Cores(L)": psutil.cpu_count(logical=True),
+            "Cores(LM": psutil.cpu_count(logical=False),
+        }
+
+    @staticmethod
+    def _cpu_monitor(target_function):
+        worker_process = mp.Process(target=target_function)
+        worker_process.start()
+        p = psutil.Process(worker_process.pid)
+
+        cpu_usage_pc = []
+        while worker_process.is_alive():
+            cpu_usage_pc.append(p.cpu_percent())
+            sleep(0.01)
+
+        worker_process.join()
+        return cpu_usage_pc
+
+    def report(self, results_dict: dict):
         print(
             tabulate(
-                table,
-                headers=[
-                    "Completed",
-                    "Failed",
-                    "Time Taken (sec)",
-                    "Infer Per Sec",
-                    "Max Run (ms)",
-                    "Min Run (ms)",
-                    "Stdev (ms)",
-                    "Mean (ms)",
-                    "Median (ms)",
-                ],
+                [results_dict.values()],
+                headers=results_dict.keys(),
                 tablefmt="fancy_grid",
+                numalign="right",
             )
         )
 
@@ -156,4 +172,10 @@ class InferenceReport:
 
 class MultiInferenceReport:
     def __init__(self, models: List[Callable], inputs: List[Any]):
-        pass
+        self.models = models
+        self.inputs = inputs
+
+    def run(self):
+        for model, _input in zip(self.models, self.inputs):
+            report = InferenceReport(model, _input, 5, infer_failure_point=1)
+            results = report.run()
