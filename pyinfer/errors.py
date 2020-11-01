@@ -4,3 +4,7 @@ class MeasurementIntervalNotSetError(RuntimeError):
 
 class ModelIsNotCallableError(RuntimeError):
     "Raise when the object provided as a model is not a python `Callable` object"
+
+
+class NamesNotEqualsModelsLengthError(RuntimeError):
+    "Raise when the number of names given for a multi report does not equal the number of models"

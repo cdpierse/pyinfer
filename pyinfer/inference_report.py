@@ -9,7 +9,11 @@ from typing import Any, Callable, List, Union
 import psutil
 from tabulate import tabulate
 
-from .errors import MeasurementIntervalNotSetError, ModelIsNotCallableError
+from .errors import (
+    MeasurementIntervalNotSetError,
+    ModelIsNotCallableError,
+    NamesNotEqualsModelsLengthError,
+)
 
 
 class InferenceReport:
@@ -23,6 +27,8 @@ class InferenceReport:
         n_iterations: int = None,
         exit_on_inputs_exhausted: bool = False,
         infer_failure_point: Union[int, float, None] = None,
+        model_name: str = None,
+        drop_stats: List[str] = None,
     ):
         if not isinstance(model, Callable):
             raise ModelIsNotCallableError(
@@ -32,6 +38,12 @@ class InferenceReport:
         self.inputs = inputs
         self.exit_on_inputs_exhausted = exit_on_inputs_exhausted
         self.infer_failure_point = infer_failure_point
+        self.drop_stats = drop_stats
+
+        if model_name:
+            self.model_name = str(model_name)
+        else:
+            self.model_name = "Model"
 
         if not n_iterations and not n_seconds:
             s = "You have not specified either `n_seconds` or `n_iterations`."
@@ -91,6 +103,14 @@ class InferenceReport:
                 self.model(self.inputs)
                 end = perf_counter()
                 end = perf_counter_ns() * 1e-9
+                run = end - start
+                if self.infer_failure_point:
+                    if run >= self.infer_failure_point:
+                        failed += 1
+                    else:
+                        completed += 1
+                else:
+                    completed += 1
                 runs.append(round(run, 4))
                 iterations += 1
                 total_time_taken += run
@@ -112,7 +132,7 @@ class InferenceReport:
     ) -> dict:
         total = completed + failed
         return {
-            "Model": "Model 1",
+            "Model": self.model_name,
             "Success": completed,
             "Fail": failed,
             "Took": total_time_taken,
@@ -171,11 +191,78 @@ class InferenceReport:
 
 
 class MultiInferenceReport:
-    def __init__(self, models: List[Callable], inputs: List[Any]):
+    def __init__(
+        self,
+        models: List[Callable],
+        inputs: List[Any],
+        n_seconds: Union[int, float, None] = None,
+        n_iterations: int = None,
+        exit_on_inputs_exhausted: bool = False,
+        infer_failure_point: Union[int, float, None] = None,
+        model_names: List[str] = None,
+    ):
+
+        for i, model in enumerate(models):
+            if not isinstance(model, Callable):
+                raise ModelIsNotCallableError(
+                    f"The model at index {i} is not callable. Please provide a model that has a method call."
+                )
+
         self.models = models
         self.inputs = inputs
+        self.exit_on_inputs_exhausted = exit_on_inputs_exhausted
+        self.infer_failure_point = infer_failure_point
 
-    def run(self):
-        for model, _input in zip(self.models, self.inputs):
-            report = InferenceReport(model, _input, 5, infer_failure_point=1)
-            results = report.run()
+        if model_names:
+            if len(model_names) != len(self.models):
+                s = f"Length of model_names is {len(model_names)}, does not equal number of models provided {len(self.models)}. "
+                s += "Please ensure that these lengths are equal if you want to set custom model names. "
+                s += "Otherwise you can leave model_names as None."
+                raise NamesNotEqualsModelsLengthError(s)
+            else:
+                self.model_names = model_names
+            pass
+        else:
+            self.model_names = ["Model " + str(i) for i, _ in enumerate(self.models)]
+        if not n_iterations and not n_seconds:
+            s = "You have not specified either `n_seconds` or `n_iterations`."
+            s += " Please specify a valid measurement interval."
+            raise MeasurementIntervalNotSetError(s)
+
+        if n_iterations and n_seconds:
+            s = f"You have set both `n_seconds={n_seconds}` and `n_iterations={n_iterations}` "
+            s += f"only one can be specified per instance. Defaulting measurement interval to `seconds={n_seconds}``"
+
+            warnings.warn(s)
+            self.n_seconds = n_seconds
+            self.n_iterations = None
+        else:
+            self.n_seconds = n_seconds
+            self.n_iterations = n_iterations
+
+        self.terminated = False
+
+    def run(self, print_report: bool = False):
+        results = []
+        for i, (model, _input) in enumerate(zip(self.models, self.inputs)):
+            report = InferenceReport(
+                model=model,
+                inputs=_input,
+                n_seconds=self.n_seconds,
+                n_iterations=self.n_iterations,
+                infer_failure_point=self.infer_failure_point,
+                model_name=self.model_names[i],
+            )
+            results.append(report.run(print_report=False))
+
+        return results
+
+    def report(self, results_list: List[dict]):
+        print(
+            tabulate(
+                [results_dict.values() for results_dict in results_list],
+                headers=results_list[0].keys(),
+                tablefmt="fancy_grid",
+                numalign="right",
+            )
+        )
