@@ -188,7 +188,7 @@ class InferenceReport:
             "Median(ms)": self._median_run(runs),
             "IQR(ms)": self._iqr(runs),
             "Cores(L)": psutil.cpu_count(logical=True),
-            "Cores(LM": psutil.cpu_count(logical=False),
+            "Cores(P)": psutil.cpu_count(logical=False),
         }
 
     @staticmethod
