@@ -18,7 +18,7 @@ from .errors import (
 
 
 class InferenceReport:
-    "Provides Model Agnostic inference reporting for ML model"
+    "A model agnostic report for any callable ML model"
 
     def __init__(
         self,
@@ -31,6 +31,36 @@ class InferenceReport:
         model_name: str = None,
         drop_stats: List[str] = None,
     ):
+        """
+        Args:
+            model (Callable): The callable method or function for the model.
+
+            inputs (Any): The input(s) parameters the model receives.
+
+            n_seconds (Union[int, float, None], optional): Number of seconds to run model inferences.
+            If this is `None` it is expected that `n_iterations` will be set. Defaults to None.
+
+            n_iterations (int, optional): Number of iterations to run model inferences for.
+            If this is `None` it is expected that `n_seconds` will be set. Defaults to None.
+
+            exit_on_inputs_exhausted (bool, optional): If inputs are a iterable of inputs exit
+            on completion. This feature is not yet implemented. Defaults to False.
+
+            infer_failure_point (Union[int, float, None], optional): Time in seconds (int or float)
+            at which an inference. is to be considered a failure in the reporting stats.
+            Defaults to None.
+
+            model_name (str, optional): The name to give to the model for the report.
+            Defaults to None.
+
+            drop_stats (List[str], optional): List of keys to drop from the report.
+            Defaults to None.
+
+        Raises:
+            ModelIsNotCallableError: Will raise if the model provided is not callable.
+            MeasurementIntervalNotSetError: Will raise if neither `n_seconds` or
+            `n_iterations` are set.
+        """
         if not isinstance(model, Callable):
             raise ModelIsNotCallableError(
                 "The model provided is not callable. Please provide a model that has a method call."
@@ -68,6 +98,8 @@ class InferenceReport:
 
     @contextmanager
     def timeout(self, duration):
+        "Creates signal to terminate execution once `duration` seconds have passed"
+
         def timeout_handler(signum, frame):
             self.terminated = True
 
@@ -77,6 +109,16 @@ class InferenceReport:
         signal.alarm(0)
 
     def run(self, print_report: bool = True) -> dict:
+        """
+        Runs the inference report for `self.model` with input(s) `self.inputs`
+
+        Args:
+            print_report (bool, optional): If true a table representation of the report will be
+            printed to console. Defaults to True.
+
+        Returns:
+            dict: A dictionary containing all the report stats created during the run.
+        """
         iterations = 0
         runs: List[datetime.timedelta] = []
         total_time_taken = 0
@@ -134,6 +176,7 @@ class InferenceReport:
         runs: List[float],
         total_time_taken: float,
     ) -> dict:
+        "Creates dict of all the stats using info collected from run"
         total = completed + failed
         return {
             "Model": self.model_name,
@@ -153,6 +196,10 @@ class InferenceReport:
 
     @staticmethod
     def _cpu_monitor(target_function):
+        """
+        Monitors cpu usage of a `target_function`. Not currently in use
+        As psutil requires root access when running a worker process.
+        """
         worker_process = mp.Process(target=target_function)
         worker_process.start()
         p = psutil.Process(worker_process.pid)
@@ -166,6 +213,16 @@ class InferenceReport:
         return cpu_usage_pc
 
     def report(self, results_dict: dict):
+        """
+        Prints a report to console based on the values
+        found in `results_dict`
+
+        Args:
+            results_dict (dict): Dictionary containing compiled stats from a run.
+        """
+        if self.drop_stats:
+            for drop_key in drop_stats:
+                results_dict.pop(drop_key, None)
         print(
             tabulate(
                 [results_dict.values()],
@@ -175,7 +232,21 @@ class InferenceReport:
             )
         )
 
-    def plot(self, show: bool = True, save: str = None):
+    def plot(self, show: bool = True, save_location: str = None):
+        """
+        Creates a simple plot of `self.runs`. Plots run number
+        on the x-axis and run time in milliseconds on the y-axis.
+
+        Args:
+            show (bool, optional): Whether to show the plot after calling method. Defaults to True.
+
+            save_location (str, optional): Location to save plot at. If None the plot will not
+            be saved. Defaults to None.
+
+        Raises:
+            MatplotlibNotInstalledError: Raise if matplotlib is not installed in python environment.
+            ValueError: Raise if the runs have not yet been calculated but `plot` is called.
+        """
         try:
             import matplotlib
             import matplotlib.pyplot as plt
@@ -193,28 +264,37 @@ class InferenceReport:
             ax.grid()
             if show:
                 plt.show()
+
+            if save_location:
+                plt.savefig(save_name)
         else:
             raise ValueError(
                 "self.runs is not yet set, please run the report before plotting."
             )
 
     def _max_run(self, runs: list) -> float:
+        "Returns max run in milliseconds from `runs`"
         return max(runs) * 1000
 
     def _min_run(self, runs: list) -> float:
+        "Returns min run in milliseconds from `runs`"
         return min(runs) * 1000
 
     def _stdev(self, runs: list) -> float:
+        "Returns standard deviation in milliseconds from `runs`"
         return statistics.stdev(runs) * 1000
 
     def _iqr(self, runs: list) -> float:
+        "Returns interquartile range in milliseconds from `runs`"
         quartiles = statistics.quantiles(runs, n=4)
         return (quartiles[2] - quartiles[0]) * 1000
 
     def _mean_run(self, runs: list) -> float:
+        "Returns mean run time in milliseconds from `runs`"
         return statistics.mean(runs) * 1000
 
     def _median_run(self, runs: list) -> float:
+        "Returns median run time in milliseconds from `runs`"
         return statistics.median(runs) * 1000
 
 
@@ -228,6 +308,7 @@ class MultiInferenceReport:
         exit_on_inputs_exhausted: bool = False,
         infer_failure_point: Union[int, float, None] = None,
         model_names: List[str] = None,
+        drop_stats: List[str] = None,
     ):
 
         for i, model in enumerate(models):
@@ -241,6 +322,7 @@ class MultiInferenceReport:
         self.exit_on_inputs_exhausted = exit_on_inputs_exhausted
         self.infer_failure_point = infer_failure_point
         self.models_runs = []
+        self.drop_stats = drop_stats
 
         if model_names:
             if len(model_names) != len(self.models):
@@ -271,7 +353,7 @@ class MultiInferenceReport:
 
         self.terminated = False
 
-    def run(self, print_report: bool = False):
+    def run(self, print_report: bool = True):
         results = []
         for i, (model, _input) in enumerate(zip(self.models, self.inputs)):
             report = InferenceReport(
@@ -281,9 +363,13 @@ class MultiInferenceReport:
                 n_iterations=self.n_iterations,
                 infer_failure_point=self.infer_failure_point,
                 model_name=self.model_names[i],
+                drop_stats=self.drop_stats,
             )
             results.append(report.run(print_report=False))
             self.models_runs.append(report.runs)
+
+        if print_report:
+            self.report(results)
 
         return results
 
@@ -297,7 +383,7 @@ class MultiInferenceReport:
             )
         )
 
-    def plot(self, show: bool = True):
+    def plot(self, show: bool = True, save_name: str = None):
         try:
             import matplotlib
             import matplotlib.pyplot as plt
@@ -315,6 +401,8 @@ class MultiInferenceReport:
                 ms_runs = [(run * 1000) for run in runs]
                 plt.plot(t, ms_runs, marker="o", label=self.model_names[i])
                 plt.legend()
+            if save_name:
+                plt.savefig(save_name)
         else:
             raise ValueError(
                 "self.models_runs is not yet set, please run the report before plotting."
