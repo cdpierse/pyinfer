@@ -9,9 +9,12 @@ from typing import Any, Callable, List, Union
 import psutil
 from tabulate import tabulate
 
-from .errors import (MatplotlibNotInstalledError,
-                     MeasurementIntervalNotSetError, ModelIsNotCallableError,
-                     NamesNotEqualsModelsLengthError)
+from .errors import (
+    MatplotlibNotInstalledError,
+    MeasurementIntervalNotSetError,
+    ModelIsNotCallableError,
+    NamesNotEqualsModelsLengthError,
+)
 
 
 class InferenceReport:
@@ -296,7 +299,7 @@ class InferenceReport:
 
 
 class MultiInferenceReport:
-     "A model agnostic report of inference related stats for any list of callable models"
+    "A model agnostic report of inference related stats for any list of callable models"
 
     def __init__(
         self,
@@ -315,7 +318,7 @@ class MultiInferenceReport:
 
             inputs (List[Any]): The input(s) parameters each of the models receives. If only one
             input is given then it is assumed each model takes the same shape/type of input and
-            that input will be passed to each model. 
+            that input will be passed to each model.
 
             n_seconds (Union[int, float, None], optional): Number of seconds to run model inferences.
             If this is `None` it is expected that `n_iterations` will be set. Defaults to None.
@@ -338,11 +341,13 @@ class MultiInferenceReport:
 
         Raises:
             ModelIsNotCallableError: Will raise if the model provided is not callable.
+
             NamesNotEqualsModelsLengthError: Will raise if the number of models names
-            does not match the number of model callables provided. 
+            does not match the number of model callables provided.
+
             MeasurementIntervalNotSetError: Will raise if neither `n_seconds` or
-            `n_iterations` are set.       
-            """
+            `n_iterations` are set.
+        """
 
         for i, model in enumerate(models):
             if not isinstance(model, Callable):
@@ -351,7 +356,7 @@ class MultiInferenceReport:
                 )
 
         self.models = models
-        if not isinstance(inputs,list):
+        if not isinstance(inputs, list):
             self.inputs = [inputs]
         else:
             self.inputs = inputs
