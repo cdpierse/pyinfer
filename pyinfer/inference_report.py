@@ -184,14 +184,19 @@ class InferenceReport:
             s += 'To use this method please install by running: pip install "pyinfer[plotting]" '
             raise MatplotlibNotInstalledError(s)
 
-        t = list(range(0, len(self.runs)))
-        ms_runs = [(run * 1000) for run in self.runs]
-        fig, ax = plt.subplots()
-        ax.plot(t, ms_runs)
-        ax.set(xlabel="run", ylabel="run time (ms)")
-        ax.grid()
-        if show:
-            plt.show()
+        if self.runs:
+            t = list(range(0, len(self.runs)))
+            ms_runs = [(run * 1000) for run in self.runs]
+            fig, ax = plt.subplots()
+            ax.plot(t, ms_runs, marker="o")
+            ax.set(xlabel="run", ylabel="run time (ms)")
+            ax.grid()
+            if show:
+                plt.show()
+        else:
+            raise ValueError(
+                "self.runs is not yet set, please run the report before plotting."
+            )
 
     def _max_run(self, runs: list) -> float:
         return max(runs) * 1000
@@ -235,6 +240,7 @@ class MultiInferenceReport:
         self.inputs = inputs
         self.exit_on_inputs_exhausted = exit_on_inputs_exhausted
         self.infer_failure_point = infer_failure_point
+        self.models_runs = []
 
         if model_names:
             if len(model_names) != len(self.models):
@@ -277,6 +283,7 @@ class MultiInferenceReport:
                 model_name=self.model_names[i],
             )
             results.append(report.run(print_report=False))
+            self.models_runs.append(report.runs)
 
         return results
 
@@ -289,3 +296,29 @@ class MultiInferenceReport:
                 numalign="right",
             )
         )
+
+    def plot(self, show: bool = True):
+        try:
+            import matplotlib
+            import matplotlib.pyplot as plt
+        except:
+            s = "InferenceReport.plot() requires matplotlib to be installed."
+            s += 'To use this method please install by running: pip install "pyinfer[plotting]" '
+            raise MatplotlibNotInstalledError(s)
+
+        if self.models_runs:
+            fig, ax = plt.subplots()
+            ax.set(xlabel="run", ylabel="run time (ms)")
+            ax.grid()
+            for i, runs in enumerate(self.models_runs):
+                t = list(range(0, len(runs)))
+                ms_runs = [(run * 1000) for run in runs]
+                plt.plot(t, ms_runs, marker="o", label=self.model_names[i])
+                plt.legend()
+        else:
+            raise ValueError(
+                "self.models_runs is not yet set, please run the report before plotting."
+            )
+
+        if show:
+            plt.show()
