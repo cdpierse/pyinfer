@@ -9,16 +9,13 @@ from typing import Any, Callable, List, Union
 import psutil
 from tabulate import tabulate
 
-from .errors import (
-    MatplotlibNotInstalledError,
-    MeasurementIntervalNotSetError,
-    ModelIsNotCallableError,
-    NamesNotEqualsModelsLengthError,
-)
+from .errors import (MatplotlibNotInstalledError,
+                     MeasurementIntervalNotSetError, ModelIsNotCallableError,
+                     NamesNotEqualsModelsLengthError)
 
 
 class InferenceReport:
-    "A model agnostic report for any callable ML model"
+    "A model agnostic report of inference related stats for any callable model"
 
     def __init__(
         self,
@@ -299,6 +296,8 @@ class InferenceReport:
 
 
 class MultiInferenceReport:
+     "A model agnostic report of inference related stats for any list of callable models"
+
     def __init__(
         self,
         models: List[Callable],
@@ -310,6 +309,40 @@ class MultiInferenceReport:
         model_names: List[str] = None,
         drop_stats: List[str] = None,
     ):
+        """
+        Args:
+            models (List[Callable]): A list of the callable methods or functions for the models.
+
+            inputs (List[Any]): The input(s) parameters each of the models receives. If only one
+            input is given then it is assumed each model takes the same shape/type of input and
+            that input will be passed to each model. 
+
+            n_seconds (Union[int, float, None], optional): Number of seconds to run model inferences.
+            If this is `None` it is expected that `n_iterations` will be set. Defaults to None.
+
+            n_iterations (int, optional): Number of iterations to run model inferences for.
+            If this is `None` it is expected that `n_seconds` will be set. Defaults to None.
+
+            exit_on_inputs_exhausted (bool, optional): If inputs are a iterable of inputs exit
+            on completion. This feature is not yet implemented. Defaults to False.
+
+            infer_failure_point (Union[int, float, None], optional): Time in seconds (int or float)
+            at which an inference. is to be considered a failure in the reporting stats.
+            Defaults to None.
+
+            model_names (List[str], optional): The names to give to the models for the report. Must
+            be the same length as number of models provided. Defaults to None.
+
+            drop_stats (List[str], optional): List of keys to drop from the report.
+            Defaults to None.
+
+        Raises:
+            ModelIsNotCallableError: Will raise if the model provided is not callable.
+            NamesNotEqualsModelsLengthError: Will raise if the number of models names
+            does not match the number of model callables provided. 
+            MeasurementIntervalNotSetError: Will raise if neither `n_seconds` or
+            `n_iterations` are set.       
+            """
 
         for i, model in enumerate(models):
             if not isinstance(model, Callable):
@@ -318,7 +351,16 @@ class MultiInferenceReport:
                 )
 
         self.models = models
-        self.inputs = inputs
+        if not isinstance(inputs,list):
+            self.inputs = [inputs]
+        else:
+            self.inputs = inputs
+        if len(self.inputs) != len(self.models):
+            # assuming that the models take the same shape inputs
+
+            # forces the inputs to just be the first input * the number of models
+            self.inputs = [self.inputs[0]] * len(self.models)
+
         self.exit_on_inputs_exhausted = exit_on_inputs_exhausted
         self.infer_failure_point = infer_failure_point
         self.models_runs = []
@@ -353,7 +395,18 @@ class MultiInferenceReport:
 
         self.terminated = False
 
-    def run(self, print_report: bool = True):
+    def run(self, print_report: bool = True) -> List[dict]:
+        """
+        Runs the multi inference report for `self.models` with input(s) `self.inputs`
+
+        Args:
+            print_report (bool, optional): If true a table representation of the report will be
+            printed to console. Defaults to True.
+
+        Returns:
+            List[dict]: A list of dictionaries containing all the report stats created during the run
+            for each model callable.
+        """
         results = []
         for i, (model, _input) in enumerate(zip(self.models, self.inputs)):
             report = InferenceReport(
@@ -374,6 +427,13 @@ class MultiInferenceReport:
         return results
 
     def report(self, results_list: List[dict]):
+        """
+        Prints a report to console based on the values
+        found in `results_list`
+
+        Args:
+            results_list (dict): A list of dictionaries containing compiled stats from the runs.
+        """
         print(
             tabulate(
                 [results_dict.values() for results_dict in results_list],
@@ -384,6 +444,20 @@ class MultiInferenceReport:
         )
 
     def plot(self, show: bool = True, save_name: str = None):
+        """
+        Creates a simple plot of `self.models_runs`. For each run it
+        plots run number on the x-axis and run time in milliseconds on the y-axis.
+
+        Args:
+            show (bool, optional): Whether to show the plot after calling method. Defaults to True.
+
+            save_location (str, optional): Location to save plot at. If None the plot will not
+            be saved. Defaults to None.
+
+        Raises:
+            MatplotlibNotInstalledError: Raise if matplotlib is not installed in python environment.
+            ValueError: Raise if the model_runs have not yet been calculated but `plot` is called.
+        """
         try:
             import matplotlib
             import matplotlib.pyplot as plt
