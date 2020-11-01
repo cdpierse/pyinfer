@@ -10,6 +10,7 @@ import psutil
 from tabulate import tabulate
 
 from .errors import (
+    MatplotlibNotInstalledError,
     MeasurementIntervalNotSetError,
     ModelIsNotCallableError,
     NamesNotEqualsModelsLengthError,
@@ -39,6 +40,8 @@ class InferenceReport:
         self.exit_on_inputs_exhausted = exit_on_inputs_exhausted
         self.infer_failure_point = infer_failure_point
         self.drop_stats = drop_stats
+
+        self.runs = []
 
         if model_name:
             self.model_name = str(model_name)
@@ -115,8 +118,9 @@ class InferenceReport:
                 iterations += 1
                 total_time_taken += run
 
+        self.runs = runs
         results_dict = self._make_results_dict(
-            completed, failed, runs, total_time_taken
+            completed, failed, self.runs, total_time_taken
         )
 
         if print_report:
@@ -142,6 +146,7 @@ class InferenceReport:
             "Std(ms)": self._stdev(runs),
             "Mean(ms)": self._mean_run(runs),
             "Median(ms)": self._median_run(runs),
+            "IQR(ms)": self._iqr(runs),
             "Cores(L)": psutil.cpu_count(logical=True),
             "Cores(LM": psutil.cpu_count(logical=False),
         }
@@ -170,9 +175,23 @@ class InferenceReport:
             )
         )
 
-    def plot(self):
-        # will plot the runs on a graph
-        pass
+    def plot(self, show: bool = True, save: str = None):
+        try:
+            import matplotlib
+            import matplotlib.pyplot as plt
+        except:
+            s = "InferenceReport.plot() requires matplotlib to be installed."
+            s += 'To use this method please install by running: pip install "pyinfer[plotting]" '
+            raise MatplotlibNotInstalledError(s)
+
+        t = list(range(0, len(self.runs)))
+        ms_runs = [(run * 1000) for run in self.runs]
+        fig, ax = plt.subplots()
+        ax.plot(t, ms_runs)
+        ax.set(xlabel="run", ylabel="run time (ms)")
+        ax.grid()
+        if show:
+            plt.show()
 
     def _max_run(self, runs: list) -> float:
         return max(runs) * 1000
@@ -182,6 +201,10 @@ class InferenceReport:
 
     def _stdev(self, runs: list) -> float:
         return statistics.stdev(runs) * 1000
+
+    def _iqr(self, runs: list) -> float:
+        quartiles = statistics.quantiles(runs, n=4)
+        return (quartiles[2] - quartiles[0]) * 1000
 
     def _mean_run(self, runs: list) -> float:
         return statistics.mean(runs) * 1000
