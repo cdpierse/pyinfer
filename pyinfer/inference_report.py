@@ -282,12 +282,18 @@ class InferenceReport:
 
     def _stdev(self, runs: list) -> float:
         "Returns standard deviation in milliseconds from `runs`"
-        return statistics.stdev(runs) * 1000
+        if len(runs) >= 2:
+            return statistics.stdev(runs) * 1000
+        else:
+            return None
 
     def _iqr(self, runs: list) -> float:
         "Returns interquartile range in milliseconds from `runs`"
-        quartiles = statistics.quantiles(runs, n=4)
-        return (quartiles[2] - quartiles[0]) * 1000
+        if len(runs) >= 2:
+            quartiles = statistics.quantiles(runs, n=4)
+            return (quartiles[2] - quartiles[0]) * 1000
+        else:
+            return None
 
     def _mean_run(self, runs: list) -> float:
         "Returns mean run time in milliseconds from `runs`"

@@ -35,11 +35,11 @@ _input = "The light released from around the first massive black holes in the un
 
 
 multi_report = MultiInferenceReport(
-    [pipe, pipe],
-    [_input, "this is a short sentence"],
+    [pipe, pipe, pipe, pipe],
+    [_input,_input[:2000], _input[:1500], _input[:1000]],
     n_iterations=30,
     infer_failure_point=1,
-    model_names=["SA long", "SA short"],
+    
 )
 results_list = multi_report.run()
 multi_report.plot()
