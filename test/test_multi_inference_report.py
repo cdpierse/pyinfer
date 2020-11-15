@@ -6,10 +6,12 @@ from unittest.mock import patch
 import matplotlib.pyplot as plt
 import pytest
 from pyinfer import InferenceReport, MultiInferenceReport
-from pyinfer.errors import (MatplotlibNotInstalledError,
-                            MeasurementIntervalNotSetError,
-                            ModelIsNotCallableError,
-                            NamesNotEqualsModelsLengthError)
+from pyinfer.errors import (
+    MatplotlibNotInstalledError,
+    MeasurementIntervalNotSetError,
+    ModelIsNotCallableError,
+    NamesNotEqualsModelsLengthError,
+)
 from tabulate import tabulate
 
 
@@ -263,7 +265,6 @@ def test_multi_plot_matplotlib_not_installed():
         [model.infer_callable, model1.infer_callable], [3], n_iterations=1
     )
     results = multi_report.run(print_report=False)
-    with patch.dict(sys.modules,{'matplotlib':None}):
+    with patch.dict(sys.modules, {"matplotlib": None}):
         with pytest.raises(MatplotlibNotInstalledError):
             multi_report.plot()
-
