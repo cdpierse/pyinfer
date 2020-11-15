@@ -221,7 +221,7 @@ class InferenceReport:
             results_dict (dict): Dictionary containing compiled stats from a run.
         """
         if self.drop_stats:
-            for drop_key in drop_stats:
+            for drop_key in self.drop_stats:
                 results_dict.pop(drop_key, None)
         print(
             tabulate(
@@ -266,7 +266,7 @@ class InferenceReport:
                 plt.show()
 
             if save_location:
-                plt.savefig(save_name)
+                plt.savefig(save_location)
         else:
             raise ValueError(
                 "self.runs is not yet set, please run the report before plotting."
@@ -366,10 +366,8 @@ class MultiInferenceReport:
             self.inputs = [inputs]
         else:
             self.inputs = inputs
-        if len(self.inputs) != len(self.models):
-            # assuming that the models take the same shape inputs
 
-            # forces the inputs to just be the first input * the number of models
+        if len(self.inputs) != len(self.models):
             self.inputs = [self.inputs[0]] * len(self.models)
 
         self.exit_on_inputs_exhausted = exit_on_inputs_exhausted
@@ -454,7 +452,7 @@ class MultiInferenceReport:
             )
         )
 
-    def plot(self, show: bool = True, save_name: str = None):
+    def plot(self, show: bool = True, save_location: str = None):
         """
         Creates a simple plot of `self.models_runs`. For each run it
         plots run number on the x-axis and run time in milliseconds on the y-axis.
@@ -486,8 +484,8 @@ class MultiInferenceReport:
                 ms_runs = [(run * 1000) for run in runs]
                 plt.plot(t, ms_runs, marker="o", label=self.model_names[i])
                 plt.legend()
-            if save_name:
-                plt.savefig(save_name)
+            if save_location:
+                plt.savefig(save_location)
         else:
             raise ValueError(
                 "self.models_runs is not yet set, please run the report before plotting."

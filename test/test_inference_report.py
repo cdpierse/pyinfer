@@ -1,9 +1,17 @@
+import sys
 import time
 from unittest import mock
+from unittest.mock import patch
 
+import matplotlib.pyplot as plt
 import pytest
 from pyinfer import InferenceReport
-from pyinfer.errors import MeasurementIntervalNotSetError, ModelIsNotCallableError
+from pyinfer.errors import (
+    MatplotlibNotInstalledError,
+    MeasurementIntervalNotSetError,
+    ModelIsNotCallableError,
+)
+from tabulate import tabulate
 
 
 class MockModel:
@@ -167,3 +175,100 @@ def test_run_iterations_failure_point_triggers_failure():
     assert results["Fail"] == 1
     assert results["Success"] == 0
     assert report.n_iterations == 1
+
+
+def test_run_iterations_failure_point_does_not_trigger_failure():
+    model = MockModel(delay=0.48)
+
+    report = InferenceReport(
+        model.infer_callable, 1, n_iterations=1, infer_failure_point=0.50
+    )
+    results = report.run(print_report=False)
+    assert results["Fail"] == 0
+    assert results["Success"] == 1
+    assert report.n_iterations == 1
+
+
+@patch.object(InferenceReport, "report")
+def test_run_print_report_param_true(ir):
+    model = MockModel(delay=0.48)
+
+    report = InferenceReport(model.infer_callable, 1, n_iterations=1)
+    results = report.run()
+
+
+def test_report_drop_stats_removes_key_from_dict():
+    model = MockModel(delay=0.48)
+
+    report = InferenceReport(
+        model.infer_callable, 1, n_iterations=1, drop_stats=["Took"]
+    )
+    results = report.run(print_report=False)
+    report.report(results)
+    assert "Took" not in results.keys()
+
+
+def test_report_drop_stats_removes_multi_keys_from_dict():
+    model = MockModel(delay=0.48)
+
+    report = InferenceReport(
+        model.infer_callable, 1, n_iterations=1, drop_stats=["Took", "Fail"]
+    )
+    results = report.run(print_report=False)
+    report.report(results)
+    assert "Took" not in results.keys()
+    assert "Fail" not in results.keys()
+
+
+def test_report_drop_stats_empty():
+    model = MockModel()
+
+    report = InferenceReport(model.infer_callable, 1, n_iterations=1, drop_stats=[])
+    results = report.run(print_report=False)
+    report.report(results)
+    assert list(results.keys()) == EXPECTED_METRICS
+
+
+def test_plot():
+    model = MockModel()
+
+    report = InferenceReport(model.infer_callable, 1, n_iterations=1, drop_stats=[])
+    results = report.run(print_report=False)
+    report.plot(show=False)
+
+
+def test_plot_report_not_run_raises_value_error():
+    model = MockModel()
+
+    report = InferenceReport(model.infer_callable, 1, n_iterations=1, drop_stats=[])
+    with pytest.raises(ValueError):
+        report.plot(show=False)
+
+
+@patch.object(plt, "show")
+def test_plot_show(plt):
+    model = MockModel()
+
+    report = InferenceReport(model.infer_callable, 1, n_iterations=1, drop_stats=[])
+    results = report.run(print_report=False)
+    report.plot(show=True)
+
+
+@patch.object(plt, "show")
+@patch.object(plt, "savefig")
+def test_plot_savefig(plt, plt1):
+    model = MockModel()
+
+    report = InferenceReport(model.infer_callable, 1, n_iterations=1, drop_stats=[])
+    results = report.run(print_report=False)
+    report.plot(show=True, save_location="test.jpg")
+
+
+def test_plot_matplotlib_not_installed():
+    model = MockModel()
+
+    report = InferenceReport(model.infer_callable, 1, n_iterations=1, drop_stats=[])
+    results = report.run(print_report=False)
+    with patch.dict(sys.modules, {"matplotlib": None}):
+        with pytest.raises(MatplotlibNotInstalledError):
+            report.plot()
