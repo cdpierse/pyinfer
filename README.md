@@ -14,3 +14,19 @@ Pyinfer is a model agnostic Python utility tool for ML developers and researcher
 ```python
 pip install pyinfer
 ```
+
+## Usage
+
+### Inference Report
+<p align="left">
+    <a id="pyinfer" href="#pyinfer">
+        <img src="media/carbon_example.png" alt="Pyinfer Example Usage" title="Pyinfer Example" width="650" />
+    </a>
+</p>
+
+### Multi Inference Report
+<p align="left">
+    <a id="pyinfer" href="#pyinfer">
+        <img src="media/carbon_example_multi.png" alt="Pyinfer Example Usage" title="Pyinfer Example" width="650" />
+    </a>
+</p>
