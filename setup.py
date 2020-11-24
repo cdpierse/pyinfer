@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
 setup(
     name = 'pyinfer',
     packages = find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests", "examples", "docs", "out", "dist","media","test"]),
-    version = '0.0.1',
+    version = '0.0.2',
     license='Apache-2.0',
     description = 'Pyinfer is a model agnostic Python utility tool for ML developers and researchers to benchmark model inference statistics.',
     long_description=long_description,
