@@ -37,29 +37,29 @@ class InferenceReport:
 
             inputs (Any): The input(s) parameters the model receives.
 
-            n_seconds (Union[int, float, None], optional): Number of seconds to run model inferences.
-            If this is `None` it is expected that `n_iterations` will be set. Defaults to None.
+            n_seconds (Union[int, float, None], optional): Number of seconds to run model inferences. 
+                If this is `None` it is expected that `n_iterations` will be set. Defaults to None.
 
             n_iterations (int, optional): Number of iterations to run model inferences for.
-            If this is `None` it is expected that `n_seconds` will be set. Defaults to None.
+                If this is `None` it is expected that `n_seconds` will be set. Defaults to None.
 
             exit_on_inputs_exhausted (bool, optional): If inputs are a iterable of inputs exit
-            on completion. This feature is not yet implemented. Defaults to False.
+                on completion. This feature is not yet implemented. Defaults to False.
 
             infer_failure_point (Union[int, float, None], optional): Time in seconds (int or float)
-            at which an inference. is to be considered a failure in the reporting stats.
-            Defaults to None.
+                at which an inference is to be considered a failure in the reporting stats.
+                Defaults to None.
 
             model_name (str, optional): The name to give to the model for the report.
-            Defaults to None.
+                Defaults to None.
 
             drop_stats (List[str], optional): List of keys to drop from the report.
-            Defaults to None.
+                Defaults to None.
 
         Raises:
             ModelIsNotCallableError: Will raise if the model provided is not callable.
             MeasurementIntervalNotSetError: Will raise if neither `n_seconds` or
-            `n_iterations` are set.
+                `n_iterations` are set.
         """
         if not isinstance(model, Callable):
             raise ModelIsNotCallableError(
@@ -97,7 +97,7 @@ class InferenceReport:
         self.terminated = False
 
     @contextmanager
-    def timeout(self, duration):
+    def _timeout(self, duration:int):
         "Creates signal to terminate execution once `duration` seconds have passed"
 
         def timeout_handler(signum, frame):
@@ -126,7 +126,7 @@ class InferenceReport:
         completed = 0
 
         if self.n_seconds:
-            with self.timeout(self.n_seconds):
+            with self._timeout(self.n_seconds):
                 while not self.terminated:
                     start = perf_counter_ns() * 1e-9
                     self.model(self.inputs)
@@ -241,7 +241,7 @@ class InferenceReport:
             show (bool, optional): Whether to show the plot after calling method. Defaults to True.
 
             save_location (str, optional): Location to save plot at. If None the plot will not
-            be saved. Defaults to None.
+                be saved. Defaults to None.
 
         Raises:
             MatplotlibNotInstalledError: Raise if matplotlib is not installed in python environment.
@@ -323,36 +323,36 @@ class MultiInferenceReport:
             models (List[Callable]): A list of the callable methods or functions for the models.
 
             inputs (List[Any]): The input(s) parameters each of the models receives. If only one
-            input is given then it is assumed each model takes the same shape/type of input and
-            that input will be passed to each model.
+                input is given then it is assumed each model takes the same shape/type of input and
+                that input will be passed to each model.
 
             n_seconds (Union[int, float, None], optional): Number of seconds to run model inferences.
-            If this is `None` it is expected that `n_iterations` will be set. Defaults to None.
+                If this is `None` it is expected that `n_iterations` will be set. Defaults to None.
 
             n_iterations (int, optional): Number of iterations to run model inferences for.
-            If this is `None` it is expected that `n_seconds` will be set. Defaults to None.
+                If this is `None` it is expected that `n_seconds` will be set. Defaults to None.
 
             exit_on_inputs_exhausted (bool, optional): If inputs are a iterable of inputs exit
-            on completion. This feature is not yet implemented. Defaults to False.
+                on completion. This feature is not yet implemented. Defaults to False.
 
             infer_failure_point (Union[int, float, None], optional): Time in seconds (int or float)
-            at which an inference. is to be considered a failure in the reporting stats.
-            Defaults to None.
+                at which an inference. is to be considered a failure in the reporting stats.
+                Defaults to None.
 
             model_names (List[str], optional): The names to give to the models for the report. Must
-            be the same length as number of models provided. Defaults to None.
+                be the same length as number of models provided. Defaults to None.
 
             drop_stats (List[str], optional): List of keys to drop from the report.
-            Defaults to None.
+                Defaults to None.
 
         Raises:
             ModelIsNotCallableError: Will raise if the model provided is not callable.
 
             NamesNotEqualsModelsLengthError: Will raise if the number of models names
-            does not match the number of model callables provided.
+                does not match the number of model callables provided.
 
             MeasurementIntervalNotSetError: Will raise if neither `n_seconds` or
-            `n_iterations` are set.
+                `n_iterations` are set.
         """
 
         for i, model in enumerate(models):
@@ -410,11 +410,11 @@ class MultiInferenceReport:
 
         Args:
             print_report (bool, optional): If true a table representation of the report will be
-            printed to console. Defaults to True.
+                printed to console. Defaults to True.
 
         Returns:
             List[dict]: A list of dictionaries containing all the report stats created during the run
-            for each model callable.
+                for each model callable.
         """
         results = []
         for i, (model, _input) in enumerate(zip(self.models, self.inputs)):
@@ -461,7 +461,7 @@ class MultiInferenceReport:
             show (bool, optional): Whether to show the plot after calling method. Defaults to True.
 
             save_location (str, optional): Location to save plot at. If None the plot will not
-            be saved. Defaults to None.
+                be saved. Defaults to None.
 
         Raises:
             MatplotlibNotInstalledError: Raise if matplotlib is not installed in python environment.
