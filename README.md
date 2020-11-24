@@ -37,6 +37,22 @@ pip install pyinfer
 </p>
 
 
+### Example Outputs
+
+**Table Report**
+<p align="left">
+    <a id="pyinfer" href="#pyinfer">
+        <img src="media/report_table.png" alt="Pyinfer Table Report" title="Pyinfer Table Report" width="850" />
+    </a>
+</p>
+
+**Run Plot**
+<p align="left">
+    <a id="pyinfer" href="#pyinfer">
+        <img src="media/report_plot.png" alt="Pyinfer Report Plot" title="Pyinfer Report Plot" width="850" />
+    </a>
+</p>
+
 ### Stats Currently Included
 
 - Success Rate - Number of successful inferences within a specified time range.
@@ -56,20 +72,3 @@ pip install pyinfer
 
 - Model Size - Information relating to the size of the model in bytes. 
 - GPU Stat Support - Information about if GPU is available and if it is being utilized.
-
-
-### Example Outputs
-
-Table Report
-<p align="left">
-    <a id="pyinfer" href="#pyinfer">
-        <img src="media/report_table.png" alt="Pyinfer Table Report" title="Pyinfer Table Report" width="850" />
-    </a>
-</p>
-
-Run Plot
-<p align="left">
-    <a id="pyinfer" href="#pyinfer">
-        <img src="media/report_plot.png" alt="Pyinfer Report Plot" title="Pyinfer Report Plot" width="850" />
-    </a>
-</p>
