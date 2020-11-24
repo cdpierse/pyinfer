@@ -23,18 +23,21 @@ author = "Charles Pierse"
 # The full version, including alpha/beta/rc tags
 release = "0.0.1"
 
+master_doc = 'index'
+pygments_style = 'sphinx'
+
+github_doc_root = 'https://github.com/rtfd/recommonmark/tree/master/doc/'
 
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.napoleon',"sphinx_rtd_theme",]
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.viewcode', 'sphinx.ext.napoleon',"sphinx_rtd_theme",'recommonmark']
 
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ["_templates"]
-
+templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
@@ -53,6 +56,8 @@ html_theme = "sphinx_rtd_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
+
+
 autodoc_default_options = {
     'members': True,
     'member-order': 'bysource',
@@ -60,3 +65,5 @@ autodoc_default_options = {
     'undoc-members': True,
     'exclude-members': '__weakref__'
 }
+
+source_suffix = ['.rst', '.md']

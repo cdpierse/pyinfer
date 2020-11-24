@@ -47,7 +47,7 @@ class InferenceReport:
                 on completion. This feature is not yet implemented. Defaults to False.
 
             infer_failure_point (Union[int, float, None], optional): Time in seconds (int or float)
-                at which an inference. is to be considered a failure in the reporting stats.
+                at which an inference is to be considered a failure in the reporting stats.
                 Defaults to None.
 
             model_name (str, optional): The name to give to the model for the report.
@@ -97,7 +97,7 @@ class InferenceReport:
         self.terminated = False
 
     @contextmanager
-    def timeout(self, duration):
+    def _timeout(self, duration:int):
         "Creates signal to terminate execution once `duration` seconds have passed"
 
         def timeout_handler(signum, frame):
@@ -126,7 +126,7 @@ class InferenceReport:
         completed = 0
 
         if self.n_seconds:
-            with self.timeout(self.n_seconds):
+            with self._timeout(self.n_seconds):
                 while not self.terminated:
                     start = perf_counter_ns() * 1e-9
                     self.model(self.inputs)
