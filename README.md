@@ -42,7 +42,7 @@ pip install pyinfer
 **Table Report**
 <p align="left">
     <a id="pyinfer" href="#pyinfer">
-        <img src="media/report_table.png" alt="Pyinfer Table Report" title="Pyinfer Table Report" width="850" />
+        <img src="media/report_table.png" alt="Pyinfer Table Report" title="Pyinfer Table Report" />
     </a>
 </p>
 
