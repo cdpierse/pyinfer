@@ -14,6 +14,6 @@ report = InferenceReport(
     model=dummy.infer,
     inputs=7,
     n_iterations=2,
-    inference_timeout_seconds=2,
+    infer_failure_point=2,
 )
 report.run()
