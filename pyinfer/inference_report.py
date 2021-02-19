@@ -17,6 +17,39 @@ from .errors import (
 )
 
 
+def quantiles(data, *, n=4, method="exclusive"):
+    """
+    Monkey patched quantiles function from statistics package
+    present in python >= 3.8 as quantiles() isn't available for python 3.7.x
+    """
+    if n < 1:
+        raise StatisticsError("n must be at least 1")
+    data = sorted(data)
+    ld = len(data)
+    if ld < 2:
+        raise StatisticsError("must have at least two data points")
+    if method == "inclusive":
+        m = ld - 1
+        result = []
+        for i in range(1, n):
+            j = i * m // n
+            delta = i * m - j * n
+            interpolated = (data[j] * (n - delta) + data[j + 1] * delta) / n
+            result.append(interpolated)
+        return result
+    if method == "exclusive":
+        m = ld + 1
+        result = []
+        for i in range(1, n):
+            j = i * m // n  # rescale i to m/n
+            j = 1 if j < 1 else ld - 1 if j > ld - 1 else j  # clamp to 1 .. ld-1
+            delta = i * m - j * n  # exact integer math
+            interpolated = (data[j - 1] * (n - delta) + data[j] * delta) / n
+            result.append(interpolated)
+        return result
+    raise ValueError(f"Unknown method: {method!r}")
+
+
 class InferenceReport:
     "A model agnostic report of inference related stats for any callable model"
 
@@ -37,7 +70,7 @@ class InferenceReport:
 
             inputs (Any): The input(s) parameters the model receives.
 
-            n_seconds (Union[int, float, None], optional): Number of seconds to run model inferences. 
+            n_seconds (Union[int, float, None], optional): Number of seconds to run model inferences.
                 If this is `None` it is expected that `n_iterations` will be set. Defaults to None.
 
             n_iterations (int, optional): Number of iterations to run model inferences for.
@@ -97,7 +130,7 @@ class InferenceReport:
         self.terminated = False
 
     @contextmanager
-    def _timeout(self, duration:int):
+    def _timeout(self, duration: int):
         "Creates signal to terminate execution once `duration` seconds have passed"
 
         def timeout_handler(signum, frame):
@@ -290,7 +323,7 @@ class InferenceReport:
     def _iqr(self, runs: list) -> float:
         "Returns interquartile range in milliseconds from `runs`"
         if len(runs) >= 2:
-            quartiles = statistics.quantiles(runs, n=4)
+            quartiles = quantiles(runs, n=4)
             return (quartiles[2] - quartiles[0]) * 1000
         else:
             return None
